@@ -122,6 +122,7 @@ void UKF::Prediction(double delta_t) {
   /*************************************************************************
    * GENERATION SIGMA POINTS
   **************************************************************************/
+  int const n_sigma_points = 2 * n_aug_ + 1;
   VectorXd x_aug_ = VectorXd(7);
   MatrixXd P_aug_ = MatrixXd(7, 7);
 
@@ -149,7 +150,7 @@ void UKF::Prediction(double delta_t) {
   /*************************************************************************
    * PREDICT SIGMA POINTS
   *************************************************************************/
-  for (int i = 0; i< 2*n_aug_+1; i++)
+  for (int i = 0; i< n_sigma_points; i++)
   {
     //extract values for better readability
     double p_x = X_sig_aug_(0,i);
@@ -199,20 +200,20 @@ void UKF::Prediction(double delta_t) {
   // set weights
   double weight_0 = lambda_/(lambda_+n_aug_);
   weights_(0) = weight_0;
-  for (int i=1; i<2*n_aug_+1; i++) {  //2n+1 weights
+  for (int i=1; i< n_sigma_points; i++) {  //2n+1 weights
     double weight = 0.5/(n_aug_+lambda_);
     weights_(i) = weight;
   }
 
   //predicted state mean
   x_.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
+  for (int i = 0; i < n_sigma_points; i++) {  //iterate over sigma points
     x_ = x_ + weights_(i) * Xsig_pred_.col(i);
   }
 
   //predicted state covariance matrix
   P_.fill(0.0);
-  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
+  for (int i = 0; i < n_sigma_points; i++) {  //iterate over sigma points
 
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
