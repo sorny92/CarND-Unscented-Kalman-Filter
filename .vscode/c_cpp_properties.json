@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "linux",
+            "includePath": [
+                "/usr/include",
+                "/usr/local/include"
+            ],
+            "defines": [],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "",
+                "path": [
+                    "/usr/include",
+                    "/usr/local/include"
+                ]
+            },
+            "intelliSenseMode": "clang-x64"
+        }
+    ]
+}
