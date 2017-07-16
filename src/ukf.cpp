@@ -119,9 +119,9 @@ void UKF::Prediction(double delta_t) {
   Complete this function! Estimate the object's location. Modify the state
   vector, x_. Predict sigma points, the state, and the state covariance matrix.
   */
-  /**************************
+  /*************************************************************************
    * GENERATION SIGMA POINTS
-  **************************/
+  **************************************************************************/
   VectorXd x_aug_ = VectorXd(7);
   MatrixXd P_aug_ = MatrixXd(7, 7);
 
@@ -146,9 +146,9 @@ void UKF::Prediction(double delta_t) {
     X_sig_aug_.col(i+1+n_x_) = x_ - sqrt(lambda_+n_x_) * A.col(i);
   }
 
-  /**************************
+  /*************************************************************************
    * PREDICT SIGMA POINTS
-  **************************/
+  *************************************************************************/
   for (int i = 0; i< 2*n_aug_+1; i++)
   {
     //extract values for better readability
@@ -192,6 +192,37 @@ void UKF::Prediction(double delta_t) {
     Xsig_pred_(3,i) = yaw_p;
     Xsig_pred_(4,i) = yawd_p;
   }
+  /*******************************************************************
+   * USE SIGMA POINTS TO CALCULATE MEAN AND COVARIANCE
+  *******************************************************************/
+  weights_ = VectorXd(7);
+  // set weights
+  double weight_0 = lambda_/(lambda_+n_aug_);
+  weights_(0) = weight_0;
+  for (int i=1; i<2*n_aug_+1; i++) {  //2n+1 weights
+    double weight = 0.5/(n_aug_+lambda_);
+    weights_(i) = weight;
+  }
+
+  //predicted state mean
+  x_.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
+    x_ = x_ + weights_(i) * Xsig_pred_.col(i);
+  }
+
+  //predicted state covariance matrix
+  P_.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //iterate over sigma points
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    //angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    P_ = P_ + weights_(i) * x_diff * x_diff.transpose() ;
+  }
+
 
 }
 
