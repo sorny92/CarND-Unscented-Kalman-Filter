@@ -64,6 +64,9 @@ public:
   ///* Augmented state dimension
   int const n_aug_ = 7;
 
+  // Number of sigma points
+  int const n_sigma_points = 2 * n_aug_ + 1;
+
   ///* Sigma point spreading parameter
   double lambda_;
 
@@ -106,14 +109,17 @@ public:
   private:
     // check whether the tracking toolbox was initialized or not (first measurement)
     bool is_initialized_;
-
-    // previous timestamp
+    
     long long previous_timestamp_;
+    
+    // Noise covariances matrix
+    MatrixXd R_laser_;
+    MatrixXd R_radar_;
 
-    // tool object used to compute Jacobian and RMSE
-    Eigen::MatrixXd R_laser_;
-    Eigen::MatrixXd R_radar_;
-    Eigen::MatrixXd H_laser_;
+    // Predicted measurement Vector
+    VectorXd z_;
+    // Covariance measure Matrix
+    MatrixXd S_;
 };
 
 #endif /* UKF_H */

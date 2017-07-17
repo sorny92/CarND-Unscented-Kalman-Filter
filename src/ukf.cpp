@@ -51,16 +51,15 @@ UKF::UKF() {
   // initializing matrices
   R_laser_ = MatrixXd(2, 2);
   R_radar_ = MatrixXd(3, 3);
-  H_laser_ = MatrixXd(2, 4);
 
   //measurement covariance matrix - laser
   R_laser_ << 0.0225, 0,
         0, 0.0225;
 
   //measurement covariance matrix - radar
-  R_radar_ << 0.09, 0, 0,
-        0, 0.0009, 0,
-        0, 0, 0.09;
+  R_radar_ << std_radr_*std_radr_, 0, 0,
+        0, std_radphi_*std_radphi_, 0,
+        0, 0,std_radrd_*std_radrd_;
 }
 
 UKF::~UKF() {}
@@ -95,6 +94,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
   //Convert to seconds
   float delta_t = (meas_package.timestamp_ - previous_timestamp_)/1000000.0;
+  previous_timestamp_ = meas_package.timestamp_;
             
   Prediction(delta_t);
 
@@ -122,7 +122,6 @@ void UKF::Prediction(double delta_t) {
   /*************************************************************************
    * GENERATION SIGMA POINTS
   **************************************************************************/
-  int const n_sigma_points = 2 * n_aug_ + 1;
   VectorXd x_aug_ = VectorXd(7);
   MatrixXd P_aug_ = MatrixXd(7, 7);
 
@@ -255,4 +254,53 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the radar NIS.
   */
+  
+  // 3 because r, phi and r_dot
+  z_ = VectorXd(3);
+  S_ = MatrixXd(3, n_sigma_points);
+
+  //
+  MatrixXd z_sigma_points = MatrixXd(3, n_sigma_points);
+
+  //transform sigma points into measurement space
+  for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
+
+    // extract values for better readibility
+    double p_x = Xsig_pred_(0,i);
+    double p_y = Xsig_pred_(1,i);
+    double v  = Xsig_pred_(2,i);
+    double yaw = Xsig_pred_(3,i);
+
+    double v1 = cos(yaw)*v;
+    double v2 = sin(yaw)*v;
+
+    // measurement model
+    z_sigma_points(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
+    z_sigma_points(1,i) = atan2(p_y,p_x);                                 //phi
+    z_sigma_points(2,i) = (p_x*v1 + p_y*v2 ) / sqrt(p_x*p_x + p_y*p_y);   //r_dot
+  }
+
+  //mean predicted measurement
+  z_.fill(0.0);
+  for (int i=0; i < n_sigma_points; i++) {
+      z_ = z_ + weights_(i) * z_sigma_points.col(i);
+  }
+
+  //measurement covariance matrix S
+  MatrixXd S = MatrixXd(3,3);
+  S_.fill(0.0);
+  for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
+    //residual
+    VectorXd z_diff = z_sigma_points.col(i) - z_;
+
+    //angle normalization
+    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+    S_ = S_ + weights_(i) * z_diff * z_diff.transpose();
+  }
+
+  //add measurement noise covariance matrix
+  S_ = S_ + R_radar_;
+
 }
