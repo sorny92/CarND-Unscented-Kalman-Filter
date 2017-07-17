@@ -12,7 +12,7 @@ using std::vector;
  */
 UKF::UKF() {
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = true;
+  use_laser_ = false;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -246,6 +246,10 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
  * @param {MeasurementPackage} meas_package
  */
 void UKF::UpdateRadar(MeasurementPackage meas_package) {
+  z_ = VectorXd(3);
+  z_[0] = meas_package.raw_measurements_[0];
+  z_[1] = meas_package.raw_measurements_[1];
+  z_[2] = meas_package.raw_measurements_[2];
   /**
   TODO:
 
@@ -256,7 +260,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   */
   
   // 3 because r, phi and r_dot
-  z_ = VectorXd(3);
+  z_pred = VectorXd(3);
   S_ = MatrixXd(3, n_sigma_points);
 
   //
@@ -281,9 +285,9 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //mean predicted measurement
-  z_.fill(0.0);
+  z_pred.fill(0.0);
   for (int i=0; i < n_sigma_points; i++) {
-      z_ = z_ + weights_(i) * z_sigma_points.col(i);
+      z_pred = z_pred + weights_(i) * z_sigma_points.col(i);
   }
 
   //measurement covariance matrix S
@@ -291,7 +295,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   S_.fill(0.0);
   for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
     //residual
-    VectorXd z_diff = z_sigma_points.col(i) - z_;
+    VectorXd z_diff = z_sigma_points.col(i) - z_pred;
 
     //angle normalization
     while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
@@ -303,4 +307,40 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //add measurement noise covariance matrix
   S_ = S_ + R_radar_;
 
+/**************************************************************************
+ * UPDATE STEP
+ *************************************************************************/
+  // Cross correlation matrix
+  MatrixXd Tc_ = MatrixXd(5,3);
+  Tc_.fill(0.0);
+  for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
+
+    //residual
+    VectorXd z_diff = z_sigma_points.col(i) - z_pred;
+    //angle normalization
+    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    //angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    Tc_ = Tc_ + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  //Kalman gain K;
+  MatrixXd K = Tc_ * S_.inverse();
+
+  //residual
+  VectorXd z_diff = z_ - z_pred;
+
+  //angle normalization
+  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+  while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K*S_*K.transpose();
 }

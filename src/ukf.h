@@ -117,6 +117,8 @@ public:
     MatrixXd R_radar_;
 
     // Predicted measurement Vector
+    VectorXd z_pred;
+    // Measured value Vector
     VectorXd z_;
     // Covariance measure Matrix
     MatrixXd S_;
