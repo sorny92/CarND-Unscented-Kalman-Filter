@@ -280,11 +280,16 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     double v2 = sin(yaw)*v;
 
     // measurement model
-    z_sigma_points(0,i) = sqrt(p_x*p_x + p_y*p_y);                        //r
-    z_sigma_points(1,i) = atan2(p_y,p_x);                                 //phi
-    z_sigma_points(2,i) = (p_x*v1 + p_y*v2 ) / sqrt(p_x*p_x + p_y*p_y);   //r_dot
+    double r = sqrt(p_x*p_x + p_y*p_y);
+    z_sigma_points(0,i) = r;                        //r
+    z_sigma_points(1,i) = atan2(p_y,p_x);           //phi
+    if (fabs(r) > 0.05) {
+      z_sigma_points(2,i) = (p_x*v1 + p_y*v2 ) / r;   //r_dot
+    } else {
+      z_sigma_points(2,i) = (p_x*v1 + p_y*v2 );   //r_dot
+    }
   }
-
+  cout << z_sigma_points << "\n" << endl;
   //mean predicted measurement
   z_pred.fill(0.0);
   for (int i=0; i < n_sigma_points; i++) {
@@ -294,9 +299,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //measurement covariance matrix S
   MatrixXd S_ = MatrixXd(3,3);
   S_.fill(0.0);
+
+  VectorXd z_diff = VectorXd(3);
   for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
     //residual
-    VectorXd z_diff = z_sigma_points.col(i) - z_pred;
+     z_diff = z_sigma_points.col(i) - z_pred;
 
     //angle normalization
     while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
@@ -304,7 +311,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
 
     S_ = S_ + weights_(i) * z_diff * z_diff.transpose();
   }
-
+  cout << z_diff << "\n" << endl;
   //add measurement noise covariance matrix
   S_ = S_ + R_radar_;
 
@@ -315,13 +322,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   MatrixXd Tc_ = MatrixXd(5,3);
   Tc_.fill(0.0);
   for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
-
-    //residual
-    VectorXd z_diff = z_sigma_points.col(i) - z_pred;
-    //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
-
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
@@ -332,14 +332,15 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //Kalman gain K;
+  // TODO: Tc_ and S_ have -nan or really close to 0 values (1e-300)
   cout << Tc_ << "\n" << endl;
   cout << S_ << "\n" << endl;
   MatrixXd K = Tc_ * S_.inverse();
 
   //residual
-  cout << z_ << "\n" << endl;
+  //TODO: Revisar z_pred
   cout << z_pred << "\n" << endl;
-  VectorXd z_diff = z_ - z_pred;
+  z_diff = z_ - z_pred;
 
   //angle normalization
   while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
