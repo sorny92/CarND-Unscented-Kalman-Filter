@@ -81,7 +81,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
     // first measurement
     cout << "EKF: " << endl;
     previous_timestamp_ = meas_package.timestamp_;
-    x_ << 1, 1, 1, 1;
+    x_ << 1, 1, 1, 0, 0;
     // done initializing, no need to predict or update
     is_initialized_ = true;
     return;
@@ -134,16 +134,16 @@ void UKF::Prediction(double delta_t) {
   P_aug_.bottomRightCorner(2,2) = Q_;
 
   lambda_ = 3 - n_aug_;
-  MatrixXd X_sig_aug_ = MatrixXd(n_x_, 2*n_x_ + 1);
+  MatrixXd X_sig_aug_ = MatrixXd(n_aug_, n_sigma_points);
 
   MatrixXd A = P_aug_.llt().matrixL();
 
   // Column 0 equal to the mean
-  X_sig_aug_.col(0) = x_;
+  X_sig_aug_.col(0) = x_aug_;
   // Remaining columns following the formula
   for (int i = 0; i< n_x_; i++){
-    X_sig_aug_.col(i+1) = x_ + sqrt(lambda_+n_x_) * A.col(i);
-    X_sig_aug_.col(i+1+n_x_) = x_ - sqrt(lambda_+n_x_) * A.col(i);
+    X_sig_aug_.col(i+1) = x_aug_ + sqrt(lambda_+n_aug_) * A.col(i);
+    X_sig_aug_.col(i+1+n_aug_) = x_aug_ - sqrt(lambda_+n_aug_) * A.col(i);
   }
 
   /*************************************************************************
