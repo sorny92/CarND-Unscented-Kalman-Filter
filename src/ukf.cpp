@@ -149,6 +149,7 @@ void UKF::Prediction(double delta_t) {
   /*************************************************************************
    * PREDICT SIGMA POINTS
   *************************************************************************/
+  Xsig_pred_ = MatrixXd(n_x_, n_sigma_points);
   for (int i = 0; i< n_sigma_points; i++)
   {
     //extract values for better readability
@@ -195,7 +196,7 @@ void UKF::Prediction(double delta_t) {
   /*******************************************************************
    * USE SIGMA POINTS TO CALCULATE MEAN AND COVARIANCE
   *******************************************************************/
-  weights_ = VectorXd(7);
+  weights_ = VectorXd(n_sigma_points);
   // set weights
   double weight_0 = lambda_/(lambda_+n_aug_);
   weights_(0) = weight_0;
@@ -291,7 +292,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //measurement covariance matrix S
-  MatrixXd S = MatrixXd(3,3);
+  MatrixXd S_ = MatrixXd(3,3);
   S_.fill(0.0);
   for (int i = 0; i < n_sigma_points; i++) {  //2n+1 simga points
     //residual
@@ -331,9 +332,13 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //Kalman gain K;
+  cout << Tc_ << "\n" << endl;
+  cout << S_ << "\n" << endl;
   MatrixXd K = Tc_ * S_.inverse();
 
   //residual
+  cout << z_ << "\n" << endl;
+  cout << z_pred << "\n" << endl;
   VectorXd z_diff = z_ - z_pred;
 
   //angle normalization
@@ -341,6 +346,10 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
 
   //update state mean and covariance matrix
+  cout << K << "\n" << endl;
+  cout << z_diff << "\n" << endl;
   x_ = x_ + K * z_diff;
+  cout << x_ << "\n" << endl;
   P_ = P_ - K*S_*K.transpose();
+  cout << P_ << "\n\n" << endl;
 }
