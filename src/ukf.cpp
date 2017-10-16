@@ -79,9 +79,9 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       * Remember: you'll need to convert radar from polar to cartesian coordinates.
     */
     // first measurement
-    cout << "EKF: " << endl;
+    //cout << "EKF: " << endl;
     previous_timestamp_ = meas_package.timestamp_;
-    x_ << 1, 1, 1, 0, 0;
+    x_ << 0, 0, 1, 0, 0;
     // done initializing, no need to predict or update
     is_initialized_ = true;
     return;
@@ -100,9 +100,11 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
 
   if (meas_package.sensor_type_ == MeasurementPackage::RADAR) {
     // Radar updates
+    cout << " RADAR" << endl;
     UpdateRadar(meas_package);
   } else {
     // Laser updates
+    cout << " LIDAR" << endl;
     UpdateLidar(meas_package);
   }
 }
@@ -149,7 +151,7 @@ void UKF::Prediction(double delta_t) {
   /*************************************************************************
    * PREDICT SIGMA POINTS
   *************************************************************************/
-  Xsig_pred_ = MatrixXd(n_x_, n_sigma_points);
+  Xsig_pred_ = MatrixXd(n_aug_, n_sigma_points);
   for (int i = 0; i< n_sigma_points; i++)
   {
     //extract values for better readability
@@ -193,6 +195,7 @@ void UKF::Prediction(double delta_t) {
     Xsig_pred_(3,i) = yaw_p;
     Xsig_pred_(4,i) = yawd_p;
   }
+  std::cout << "X_sig: " << std::endl << Xsig_pred_ << std::endl;
   /*******************************************************************
    * USE SIGMA POINTS TO CALCULATE MEAN AND COVARIANCE
   *******************************************************************/
@@ -218,8 +221,7 @@ void UKF::Prediction(double delta_t) {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    x_diff(3) = atan2(sin(x_diff(3)),cos(x_diff(3)));
 
     P_ = P_ + weights_(i) * x_diff * x_diff.transpose() ;
   }
@@ -289,7 +291,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
       z_sigma_points(2,i) = (p_x*v1 + p_y*v2 );   //r_dot
     }
   }
-  cout << z_sigma_points << "\n" << endl;
+  //cout << z_sigma_points << "\n" << endl;
   //mean predicted measurement
   z_pred.fill(0.0);
   for (int i=0; i < n_sigma_points; i++) {
@@ -306,12 +308,11 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
      z_diff = z_sigma_points.col(i) - z_pred;
 
     //angle normalization
-    while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-    while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+    z_diff(1) = atan2(sin(z_diff(1)),cos(z_diff(1)));
 
     S_ = S_ + weights_(i) * z_diff * z_diff.transpose();
   }
-  cout << z_diff << "\n" << endl;
+  //cout << z_diff << "\n" << endl;
   //add measurement noise covariance matrix
   S_ = S_ + R_radar_;
 
@@ -325,32 +326,30 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
     // state difference
     VectorXd x_diff = Xsig_pred_.col(i) - x_;
     //angle normalization
-    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
-    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+    x_diff(3) = atan2(sin(x_diff(3)),cos(x_diff(3)));
 
     Tc_ = Tc_ + weights_(i) * x_diff * z_diff.transpose();
   }
 
   //Kalman gain K;
   // TODO: Tc_ and S_ have -nan or really close to 0 values (1e-300)
-  cout << Tc_ << "\n" << endl;
-  cout << S_ << "\n" << endl;
+  //cout << Tc_ << "\n" << endl;
+  //cout << S_ << "\n" << endl;
   MatrixXd K = Tc_ * S_.inverse();
 
   //residual
   //TODO: Revisar z_pred
-  cout << z_pred << "\n" << endl;
+  //cout << z_pred << "\n" << endl;
   z_diff = z_ - z_pred;
 
   //angle normalization
-  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
-  while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+  z_diff(1) = atan2(sin(z_diff(1)),cos(z_diff(1)));
 
   //update state mean and covariance matrix
-  cout << K << "\n" << endl;
-  cout << z_diff << "\n" << endl;
+  //cout << K << "\n" << endl;
+  //cout << z_diff << "\n" << endl;
   x_ = x_ + K * z_diff;
-  cout << x_ << "\n" << endl;
+  //cout << x_ << "\n" << endl;
   P_ = P_ - K*S_*K.transpose();
-  cout << P_ << "\n\n" << endl;
+  //cout << P_ << "\n\n" << endl;
 }
