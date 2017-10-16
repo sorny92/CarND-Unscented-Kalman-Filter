@@ -68,7 +68,7 @@ public:
   int const n_sigma_points = 2 * n_aug_ + 1;
 
   ///* Sigma point spreading parameter
-  double lambda_;
+  double lambda_ = 3 - n_aug_;
 
 
   /**
@@ -122,6 +122,9 @@ public:
     VectorXd z_;
     // Covariance measure Matrix
     MatrixXd S_;
+
+    double NIS_radar_ = 0;
+    double NIS_laser_ = 0;
 };
 
 #endif /* UKF_H */
